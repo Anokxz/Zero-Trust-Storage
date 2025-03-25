@@ -10,7 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    user_email = Column(String, nullable=False)
+    email = Column(String, nullable=False)
     files = relationship("FileMetadata", back_populates="owner")
 
 class FileMetadata(Base):
