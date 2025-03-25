@@ -4,7 +4,7 @@ from database import SessionLocal, engine, Base
 from models import User
 from schemas import UserCreate, UserResponse
 # from auth import get_password_hash, verify_password, create_access_token
-from routes import files
+from routes import files, users
 
 
 app = FastAPI()

@@ -31,8 +31,23 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 def login(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
-    if not db_user or not verify_password(user.password, db_user.hashed_password):
+    if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access_token = create_access_token(data={"sub": db_user.email}, expires_delta=timedelta(minutes=30))
     return {"access_token": access_token, "token_type": "bearer"}
+
+def get_current_user(authorization: str = Header(None)):
+    """Middleware to extract and verify token from Authorization header."""
+    if not authorization:
+        raise HTTPException(status_code=403, detail="Token is missing")
+    
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer":
+        raise HTTPException(status_code=403, detail="Invalid token scheme")
+
+    user_data = verify_token(token)
+    if not user_data:
+        raise HTTPException(status_code=403, detail="Invalid or expired token")
+
+    return user_data
