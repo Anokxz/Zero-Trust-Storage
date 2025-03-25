@@ -1,9 +1,9 @@
 import subprocess
 import pytest
 from fastapi.testclient import TestClient
-import app
+from main import app
 
-client = TestClient(app.app)
+client = TestClient(app)
 
 def test_main_execution():
     result = subprocess.run(["python3", "app.py"], capture_output=True, text=True, timeout=5)
@@ -18,5 +18,6 @@ def test_upload_route():
     assert "file_id" in response.json()
 
 def test_download_route():
-    response = client.get("/download/some_file_id")
+    response = client.get("/file/download/9d1a05c1-808c-4808-8219-6280c52e4d04") 
+    print(response)
     assert response.status_code in [200, 404]  # It may return 404 if the file is not found
