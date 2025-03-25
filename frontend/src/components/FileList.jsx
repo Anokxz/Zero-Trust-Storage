@@ -37,25 +37,21 @@ export default function FileList() {
     try {
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/files/download/${fileId}`,
-        { responseType: "blob" }
+        { responseType: "blob" } 
       );
-  
-      const mimeType = getMimeType(fileName);
-  
-      if (mimeType === "text/plain") {
-        processBlob(response.data, fileName); // Apply the fix for text files
-      } else {
-        // Direct download for other files
-        const blob = new Blob([response.data], { type: mimeType });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }
+
+      const blob = new Blob([response.data], { type: "text/plain" }); 
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName; // Use actual file name
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading file:", error);
     }
