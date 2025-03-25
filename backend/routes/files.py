@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 import encryption, aws_utils
 from database import get_db
@@ -20,7 +20,6 @@ async def get_files(owner_id: int = 1, db: Session = Depends(get_db)):
 async def upload_file(file: UploadFile = File(...), owner_id: int = 1, db: Session = Depends(get_db)):
     key = encryption.generate_key()
     file_data = await file.read()
-
     encrypted_data = encryption.encrypt_file(file_data, key)
 
     file_id = str(uuid.uuid4())
@@ -40,7 +39,7 @@ async def download_file(file_id: str, owner_id: int = 1, db: Session = Depends(g
 
     encrypted_data = aws_utils.download_file_from_s3(file_id)
     decrypted_data = encryption.decrypt_file(encrypted_data, metadata.encrypted_key)
-
+    
     return decrypted_data.decode()
 
 if __name__ == "__main__":
