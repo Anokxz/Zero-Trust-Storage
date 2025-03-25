@@ -11,25 +11,51 @@ export default function FileList() {
       .catch((err) => console.error(err));
   }, []);
 
+  const getMimeType = (fileName) => {
+    const extension = fileName.split(".").pop().toLowerCase();
+    const mimeTypes = {
+      txt: "text/plain",
+      pdf: "application/pdf",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      json: "application/json",
+      csv: "text/csv",
+      zip: "application/zip",
+      mp4: "video/mp4",
+      mp3: "audio/mpeg",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      xls: "application/vnd.ms-excel",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    };
+    return mimeTypes[extension] || "application/octet-stream"; // Default binary file type
+  };
+
   const downloadFile = async (fileId, fileName) => {
     try {
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/files/download/${fileId}`,
-        { responseType: "blob" } 
+        { responseType: "blob" }
       );
-
-      const blob = new Blob([response.data], { type: "text/plain" }); 
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName; // Use actual file name
-      document.body.appendChild(link);
-      link.click();
-
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+  
+      const mimeType = getMimeType(fileName);
+  
+      if (mimeType === "text/plain") {
+        processBlob(response.data, fileName); // Apply the fix for text files
+      } else {
+        // Direct download for other files
+        const blob = new Blob([response.data], { type: mimeType });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
     } catch (error) {
       console.error("Error downloading file:", error);
     }
