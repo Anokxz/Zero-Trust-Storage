@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 
-const Login: React.FC = () => {
+const Signup: React.FC = () => {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
@@ -21,11 +22,21 @@ const Login: React.FC = () => {
           </div>
           <h2 className="mt-2 text-xl font-bold text-gray-900 dark:text-white">FileStore</h2>
           <h2 className="mt-4 text-center text-2xl font-extrabold text-gray-900 dark:text-white">
-            Sign in to your account
+            Create an Account
           </h2>
         </div>
         <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
+            <div>
+              <input
+                type="text"
+                placeholder="Username"
+                required
+                className="w-full px-3 py-3 border rounded-md bg-white dark:bg-gray-700"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
             <div>
               <input
                 type="email"
@@ -47,19 +58,12 @@ const Login: React.FC = () => {
               />
             </div>
           </div>
-          <div className="flex justify-between">
-            <button type="submit" onClick={() => navigate('/Dashboard')} className="w-full py-3 bg-blue-600 text-white rounded-md">
-              Sign In
-            </button>
-          </div>
+          <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-md">
+            Sign Up
+          </button>
           <div className="text-center">
-            <button onClick={() => navigate('/forgot-password')} className="text-blue-500">
-              Forgot password?
-            </button>
-          </div>
-          <div className="text-center">
-            <button onClick={() => navigate('/signup')} className="text-gray-500">
-              Don't have an account? Sign Up
+            <button onClick={() => navigate('/login')} className="text-gray-500">
+              Already have an account? Sign In
             </button>
           </div>
         </form>
@@ -68,4 +72,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Signup;
