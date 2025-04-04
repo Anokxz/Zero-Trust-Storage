@@ -42,5 +42,22 @@ async def download_file(file_id: str, owner_id: int = 1, db: Session = Depends(g
     
     return decrypted_data.decode()
 
+@router.delete("/delete/{file_id}")
+async def delete_file(file_id: str, owner_id: int = 1, db: Session = Depends(get_db)):
+    # Check if file exists in the database and belongs to the owner
+    metadata = db.query(FileMetadata).filter_by(id=file_id, owner_id=owner_id).first()
+    if not metadata:
+        raise HTTPException(status_code=404, detail="File not found or unauthorized")
+
+    # Attempt to delete the file from S3
+    aws_status_code = aws_utils.delete_file_from_s3(file_id)
+
+    if aws_status_code == 204:  # Successful deletion
+        db.delete(metadata)  # Remove file record from database
+        db.commit()  # Save changes to PostgreSQL
+        return {"status": True, "message": "File successfully deleted"}
+
+    raise HTTPException(status_code=500, detail="Failed to delete file from S3")
+
 if __name__ == "__main__":
     pass
