@@ -22,7 +22,10 @@ def download_file_from_s3(file_id: str):
     response = s3_client.get_object(Bucket=AWS_BUCKET_NAME, Key=file_id)
     return response["Body"].read()
 
-
+def delete_file_from_s3(file_id: str):
+    response = s3_client.delete_object(Bucket=AWS_BUCKET_NAME, Key=file_id)
+    return response['ResponseMetadata']['HTTPStatusCode']
+    
 if __name__ == "__main__":
     # Test Case
     print("Sucessfully connected to S3")
