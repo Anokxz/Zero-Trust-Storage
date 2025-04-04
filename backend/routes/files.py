@@ -1,4 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Response
+from fastapi.responses import StreamingResponse
+import io
 from sqlalchemy.orm import Session
 import encryption, aws_utils
 from database import get_db
@@ -39,8 +41,17 @@ async def download_file(file_id: str, owner_id: int = 1, db: Session = Depends(g
 
     encrypted_data = aws_utils.download_file_from_s3(file_id)
     decrypted_data = encryption.decrypt_file(encrypted_data, metadata.encrypted_key)
+
+    # Convert decrypted data to BytesIO for streaming response
+    file_stream = io.BytesIO(decrypted_data)
+
+    # Return response with correct headers
+    return StreamingResponse(
+        file_stream,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{metadata.filename}"'}
+    )
     
-    return decrypted_data.decode()
 
 @router.delete("/delete/{file_id}")
 async def delete_file(file_id: str, owner_id: int = 1, db: Session = Depends(get_db)):
