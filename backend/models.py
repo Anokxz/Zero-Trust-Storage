@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, LargeBinary, ForeignKey, TIMESTAMP, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 import uuid
 from database import Base
 
@@ -22,6 +23,6 @@ class FileMetadata(Base):
     filename = Column(String, nullable=False)
     filemeta = Column(String, nullable=True)
     filesize = Column(String, nullable=False)
-    created_at = Column(TIMESTAMP, server_default="now()")
+    created_at = Column(TIMESTAMP(timezone=True), default=func.now())
     shared_access = Column(JSON, nullable=True)
     owner = relationship("User", back_populates="files")
