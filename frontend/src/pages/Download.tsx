@@ -2,41 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { Search, Download, Share2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const API_BASE_URL = 'http://127.0.0.1:8000/files';
+
+const formatDateTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+};
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const DownloadPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [files, setFiles] = useState<{ id: number; name: string; size: string; uploadedAt: string }[]>([]);
-  
-  // Fetch files from API
+  const [files, setFiles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/files/?owner_id=1');
+        const response = await fetch(`${API_BASE_URL}/?owner_id=1`);
         if (!response.ok) throw new Error('Failed to fetch files');
-        
         const data = await response.json();
-        setFiles(data); // Assuming API returns an array of files
+
+        const sortedFiles = data.sort(
+          (a: any, b: any) => new Date(b.created).getTime() - new Date(a.created).getTime()
+        );
+
+        setFiles(sortedFiles);
       } catch (error) {
         console.error('Error fetching files:', error);
         toast.error('Failed to load files');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchFiles();
   }, []);
 
-  const handleDownload = async (fileId: number) => {
+  const handleDownload = async (fileId: string, fileName:string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/files/download/${fileId}`, {
-        method: 'GET',
-      });
-
+      const response = await fetch(`${API_BASE_URL}/download/${fileId}?owner_id=1`);
       if (!response.ok) throw new Error('Download failed');
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `file_${fileId}`; // Change filename if needed
+      a.download = `${fileName}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -47,29 +72,27 @@ const DownloadPage: React.FC = () => {
     }
   };
 
-  const handleShare = (fileId: number) => {
-    const fileUrl = `http://127.0.0.1:8000/files/download/${fileId}`;
+  const handleShare = (fileId: string) => {
+    const fileUrl = `${API_BASE_URL}/download/${fileId}?owner_id=1`;
     navigator.clipboard.writeText(fileUrl);
     toast.success('Link copied to clipboard!');
   };
 
-  const handleDelete = async (fileId: number) => {
+  const handleDelete = async (fileId: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/files/${fileId}`, {
+      const response = await fetch(`${API_BASE_URL}/delete/${fileId}?owner_id=1`, {
         method: 'DELETE',
       });
-
-      if (!response.ok) throw new Error('Failed to delete file');
-
-      setFiles(files.filter(file => file.id !== fileId));
-      toast.success('File deleted successfully!');
+      if (!response.ok) throw new Error('Delete failed');
+      setFiles(files.filter((file) => file.id !== fileId));
+      toast.success('File deleted!');
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete file');
     }
   };
 
-  const filteredFiles = files.filter(file =>
+  const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -77,7 +100,7 @@ const DownloadPage: React.FC = () => {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Download Files</h1>
-        
+
         <div className="mb-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -95,22 +118,42 @@ const DownloadPage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Size</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Uploaded</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Size
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Uploaded
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredFiles.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                    Loading files...
+                  </td>
+                </tr>
+              ) : filteredFiles.length > 0 ? (
                 filteredFiles.map((file) => (
                   <tr key={file.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{file.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{file.size}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{file.uploadedAt}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      {file.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {formatFileSize(Number(file.size))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {formatDateTime(file.created)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                       <button
-                        onClick={() => handleDownload(file.id)}
+                        onClick={() => handleDownload(file.id, file.name)}
                         className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                       >
                         <Download className="h-5 w-5" />

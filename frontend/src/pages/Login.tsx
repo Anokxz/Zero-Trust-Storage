@@ -7,9 +7,33 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+
+    try {
+      const response = await fetch('http://127.0.0.1:8000/user/login', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = await response.json();
+      console.log('Response Status:', response.status);
+      console.log('Response Data:', result);
+
+      if (response.ok) {
+        alert('Login successful!');
+        navigate('/dashboard'); // Redirect to dashboard on success
+      } else {
+        alert('Login failed: ' + (result.detail || 'Invalid credentials.'));
+      }
+    } catch (error) {
+      console.error('Fetch error:', error);
+      alert('Network error: Unable to connect to the server.');
+    }
   };
 
   return (
@@ -48,7 +72,7 @@ const Login: React.FC = () => {
             </div>
           </div>
           <div className="flex justify-between">
-            <button type="submit"  className="w-full py-3 bg-blue-600 text-white rounded-md">
+            <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-md">
               Sign In
             </button>
           </div>
