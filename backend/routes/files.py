@@ -13,7 +13,7 @@ async def get_files(owner_id: int = 1, db: Session = Depends(get_db)):
     
     file_list = []
     for file in files:
-        file_list.append({"name": file.filename, "id" : file.id})
+        file_list.append({ "id" : file.id, "name": file.filename, "size" : file.filesize, "created": file.created_at})
     return file_list
 
 @router.post("/upload/")
@@ -25,7 +25,7 @@ async def upload_file(file: UploadFile = File(...), owner_id: int = 1, db: Sessi
     file_id = str(uuid.uuid4())
     aws_utils.upload_file_to_s3(file_id, encrypted_data)
 
-    metadata = FileMetadata(id=file_id, owner_id=owner_id, encrypted_key=key, filename=file.filename)
+    metadata = FileMetadata(id=file_id, owner_id=owner_id, encrypted_key=key, filename=file.filename, filesize=len(file_data))
     db.add(metadata)
     db.commit()
 
