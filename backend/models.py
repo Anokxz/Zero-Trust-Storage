@@ -21,6 +21,7 @@ class FileMetadata(Base):
     encrypted_key = Column(LargeBinary, nullable=False)
     filename = Column(String, nullable=False)
     filemeta = Column(String, nullable=True)
+    filesize = Column(String, nullable=False)
     created_at = Column(TIMESTAMP, server_default="now()")
     shared_access = Column(JSON, nullable=True)
     owner = relationship("User", back_populates="files")
