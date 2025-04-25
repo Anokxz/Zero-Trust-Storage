@@ -12,7 +12,7 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     email = Column(String, nullable=False)
-    
+    total_downloads = Column(Integer, nullable=False, default=0)
     files = relationship("FileMetadata", back_populates="owner")
     feedbacks = relationship("Feedback", back_populates="user") 
     

@@ -44,3 +44,9 @@ def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=403, detail="Invalid or expired token")
 
     return user_data
+
+@router.post("/downloads_count")
+def total_download(user_id: int, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user_id)
+    
+    return { "downloads": db_user.first().total_downloads if db_user else -1 }
