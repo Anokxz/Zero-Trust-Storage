@@ -56,9 +56,15 @@ async def download_file(owner_id: int, file_id: str, db: Session = Depends(get_d
         if not shared:
             raise HTTPException(status_code=403, detail="You don’t have permission to download this file")
     
+    
     encrypted_data = aws_utils.download_file_from_s3(file_id)
     decrypted_data = encryption.decrypt_file(encrypted_data, metadata.encrypted_key)
 
+    # Increment owner's total download count
+    file_owner = db.query(User).filter(User.id == owner_id).first()
+    file_owner.total_downloads += 1
+    db.commit()
+    
     # Convert decrypted data to BytesIO for streaming response
     file_stream = io.BytesIO(decrypted_data)
 

@@ -51,7 +51,7 @@ def get_current_user(authorization: str = Header(None)):
 
     return user_data
 
-@router.post("/downloads_count")
+@router.get("/downloads_count")
 def total_download(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id)
     
