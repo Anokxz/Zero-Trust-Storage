@@ -4,7 +4,7 @@ from database import SessionLocal, engine, Base
 from models import User
 from schemas import UserCreate, UserResponse
 # from auth import get_password_hash, verify_password, create_access_token
-from routes import files, users
+from routes import files, users, feedback
 
 
 app = FastAPI()
@@ -24,7 +24,7 @@ Base.metadata.create_all(bind=engine)
 
 app.include_router(users.router, prefix="/user", tags=["Authentication"])
 app.include_router(files.router, prefix="/files", tags=["File Handling"])
-
+app.include_router(feedback.router, prefix="/feedback", tags=["Feeback Handling"])
 @app.get("/")
 def root():
     return {"message": "Secure File Storage API is running!"}

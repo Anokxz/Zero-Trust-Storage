@@ -20,3 +20,14 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class FeedbackCreate(BaseModel):
+    user_id: int
+    rating: int
+    feedback: str
+
+class FeedbackOut(BaseModel):
+    id: int
+    user_id: int
+    rating: int
+    feedback: str

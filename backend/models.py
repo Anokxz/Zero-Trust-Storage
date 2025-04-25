@@ -12,8 +12,10 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     email = Column(String, nullable=False)
+    
     files = relationship("FileMetadata", back_populates="owner")
-
+    feedbacks = relationship("Feedback", back_populates="user") 
+    
 class FileMetadata(Base):
     __tablename__ = "files"
 
@@ -26,3 +28,14 @@ class FileMetadata(Base):
     created_at = Column(TIMESTAMP(timezone=True), default=func.now())
     shared_access = Column(JSON, nullable=True)
     owner = relationship("User", back_populates="files")
+
+
+class Feedback(Base):
+    __tablename__ = "feedbacks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    rating = Column(Integer, nullable=False)
+    feedback = Column(String, nullable=False)
+
+    user = relationship("User", back_populates="feedbacks")
