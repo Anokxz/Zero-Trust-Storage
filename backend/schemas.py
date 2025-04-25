@@ -18,6 +18,8 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 class Token(BaseModel):
+    user_name: str 
+    user_id : int
     access_token: str
     token_type: str
 
