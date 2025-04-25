@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from uuid import UUID
 
 class UserCreate(BaseModel):
     username: str
@@ -23,6 +24,10 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+class ShareRequest(BaseModel):
+    file_id: UUID
+    shared_user_id: int
+    
 class FeedbackCreate(BaseModel):
     user_id: int
     rating: int

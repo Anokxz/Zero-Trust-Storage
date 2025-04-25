@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, LargeBinary, ForeignKey, TIMESTAMP, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, BOOLEAN
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
@@ -39,3 +39,13 @@ class Feedback(Base):
     feedback = Column(String, nullable=False)
 
     user = relationship("User", back_populates="feedbacks")
+    
+class SharedFileAccess(Base):
+    __tablename__ = "file_shares"
+    id = Column(Integer, primary_key=True)
+    file_id = Column(UUID(as_uuid=True), ForeignKey("files.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    can_download = Column(BOOLEAN, default=True)
+
+    file = relationship("FileMetadata", backref="shared_users")
+    user = relationship("User")
