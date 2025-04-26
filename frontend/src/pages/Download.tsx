@@ -29,20 +29,34 @@ const DownloadPage: React.FC = () => {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const userid = localStorage.getItem('user_id');
+  const authToken = localStorage.getItem('authToken');
+
   useEffect(() => {
+    if (!userid && !authToken) {
+      toast.error('User not logged in');
+      return;
+    }
+
     const fetchFiles = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/?owner_id=1`);
+        const response = await fetch(`${API_BASE_URL}/?owner_id=${userid}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+          },
+        });
         if (!response.ok) throw new Error('Failed to fetch files');
         const data = await response.json();
-
-        const sortedFiles = data.sort(
+        
+        // const filtered = data.filter((file: any) => file.owner === userid);
+        const sorted = data.sort(
           (a: any, b: any) => new Date(b.created).getTime() - new Date(a.created).getTime()
         );
+        console.log(sorted);
 
-        setFiles(sortedFiles);
+        setFiles(sorted);
       } catch (error) {
-        console.error('Error fetching files:', error);
+        console.error('Error fetching files:', error);   
         toast.error('Failed to load files');
       } finally {
         setLoading(false);
@@ -50,21 +64,28 @@ const DownloadPage: React.FC = () => {
     };
 
     fetchFiles();
-  }, []);
+  }, [userid, authToken]);
 
-  const handleDownload = async (fileId: string, fileName:string) => {
+  const handleDownload = async (fileId: string, fileName: string) => {
+    const userid = localStorage.getItem('user_id');
     try {
-      const response = await fetch(`${API_BASE_URL}/download/${fileId}?owner_id=1`);
+      const response = await fetch(`${API_BASE_URL}/download/${fileId}/?owner_id=${userid}`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+
       if (!response.ok) throw new Error('Download failed');
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${fileName}`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+
       toast.success('Download started!');
     } catch (error) {
       console.error('Download error:', error);
@@ -72,17 +93,44 @@ const DownloadPage: React.FC = () => {
     }
   };
 
-  const handleShare = (fileId: string) => {
-    const fileUrl = `${API_BASE_URL}/download/${fileId}?owner_id=1`;
-    navigator.clipboard.writeText(fileUrl);
-    toast.success('Link copied to clipboard!');
+  const handleShare = async (fileId: string, user_id: number) => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        toast.error('User not authenticated');
+        return;
+      }
+  
+      const response = await fetch(`${API_BASE_URL}/share/?file_id=${fileId}&target_user_id=${user_id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Accept': 'application/json',
+        },
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to share file');
+      }
+  
+      toast.success('File shared successfully!');
+    } catch (error: any) {
+      console.error('Error sharing file:', error);
+      toast.error(error.message || 'An unexpected error occurred');
+    }
   };
 
   const handleDelete = async (fileId: string) => {
+    const userid = localStorage.getItem('user_id');
     try {
-      const response = await fetch(`${API_BASE_URL}/delete/${fileId}?owner_id=1`, {
+      const response = await fetch(`${API_BASE_URL}/delete/${fileId}/?owner_id=${userid}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
       });
+
       if (!response.ok) throw new Error('Delete failed');
       setFiles(files.filter((file) => file.id !== fileId));
       toast.success('File deleted!');
@@ -118,56 +166,49 @@ const DownloadPage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Size
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Uploaded
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Size</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Uploaded</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                    Loading files...
-                  </td>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Loading files...</td>
                 </tr>
               ) : filteredFiles.length > 0 ? (
                 filteredFiles.map((file) => (
                   <tr key={file.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {file.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatFileSize(Number(file.size))}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatDateTime(file.created)}
-                    </td>
+<td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+  <div className="flex flex-col">
+    <span className="text-base font-semibold">{file.name}</span>
+    <span className="text-xs text-gray-500 dark:text-gray-400">Owner: {file.owner}</span>
+  </div>
+</td>
+
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatFileSize(Number(file.size))}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatDateTime(file.created)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                      <button
-                        onClick={() => handleDownload(file.id, file.name)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
+                      <button onClick={() => handleDownload(file.id, file.name)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                         <Download className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => handleShare(file.id)}
+                        onClick={() => {
+                          const input = prompt('Enter the target user ID to share with:');
+                          const userId = input ? parseInt(input, 10) : null;
+
+                          if (userId && !isNaN(userId)) {
+                            handleShare(file.id, userId);
+                          } else {
+                            toast.error('Invalid user ID');
+                          }
+                        }}
                         className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
                       >
                         <Share2 className="h-5 w-5" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(file.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      >
+                      <button onClick={() => handleDelete(file.id)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                         <Trash2 className="h-5 w-5" />
                       </button>
                     </td>
@@ -175,9 +216,7 @@ const DownloadPage: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                    No files found.
-                  </td>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No files found.</td>
                 </tr>
               )}
             </tbody>

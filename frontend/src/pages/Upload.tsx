@@ -39,9 +39,9 @@ const Upload: React.FC = () => {
   
     const formData = new FormData();
     formData.append("file", selectedFile);
-  
+    const userid = localStorage.getItem('user_id');
     try {
-      const response = await fetch("http://127.0.0.1:8000/files/upload/?owner_id=1", {
+      const response = await fetch(`http://127.0.0.1:8000/files/upload/?owner_id=${userid}`, {
         method: "POST",
         body: formData,
       });

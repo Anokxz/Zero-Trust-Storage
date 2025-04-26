@@ -7,16 +7,19 @@ const Dashboard: React.FC = () => {
   const [totalFiles, setTotalFiles] = useState(0);
   const [recentFiles, setRecentFiles] = useState<any[]>([]);
   const [totalStorageBytes, setTotalStorageBytes] = useState(0);
+  const [totalDownloads, setTotalDownloads] = useState(0);
+
+  const userId = localStorage.getItem('user_id');
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/files/?owner_id=1`);
+        const response = await fetch(`${API_BASE_URL}/files/?owner_id=${userId}`);
         const data = await response.json();
 
         setTotalFiles(data.length);
 
-        // Calculate total storage size
         const totalBytes = data.reduce((sum: number, file: any) => sum + parseInt(file.size), 0);
         setTotalStorageBytes(totalBytes);
 
@@ -30,7 +33,18 @@ const Dashboard: React.FC = () => {
       }
     };
 
+    const fetchDownloadCount = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/user/downloads_count?user_id=${userId}`);
+        const data = await response.json();
+        setTotalDownloads(data.downloads);
+      } catch (error) {
+        console.error('Failed to fetch download count:', error);
+      }
+    };
+
     fetchData();
+    fetchDownloadCount();
   }, []);
 
   const formatBytes = (bytes: number): string => {
@@ -43,8 +57,8 @@ const Dashboard: React.FC = () => {
 
   const stats = {
     totalFiles,
-    totalDownloads: 12,
-    storageUsed: formatBytes(totalStorageBytes)
+    totalDownloads,
+    storageUsed: formatBytes(totalStorageBytes),
   };
 
   return (
@@ -79,18 +93,19 @@ const Dashboard: React.FC = () => {
                 {recentFiles.map((file: any) => (
                   <tr key={file.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{file.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{formatBytes(parseInt(file.size))}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(file.created).toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
-                      </td>
-
+                      {formatBytes(parseInt(file.size))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(file.created).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
+                    </td>
                   </tr>
                 ))}
               </tbody>

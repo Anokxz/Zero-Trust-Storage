@@ -25,8 +25,17 @@ const Login: React.FC = () => {
       console.log('Response Data:', result);
 
       if (response.ok) {
-        alert('Login successful!');
-        navigate('/dashboard'); // Redirect to dashboard on success
+        if (result.access_token && result.user_name && result.user_id) {
+          // ✅ Store required details in localStorage
+          localStorage.setItem('authToken', result.access_token);
+          localStorage.setItem('userName', result.user_name);
+          localStorage.setItem('user_id', result.user_id); // ✅ Save user ID
+
+          alert('Login successful!');
+          navigate('/dashboard');
+        } else {
+          alert('Login failed: Missing token, user name, or user ID.');
+        }
       } else {
         alert('Login failed: ' + (result.detail || 'Invalid credentials.'));
       }
@@ -77,12 +86,20 @@ const Login: React.FC = () => {
             </button>
           </div>
           <div className="text-center">
-            <button onClick={() => navigate('/forgot-password')} className="text-blue-500">
+            <button
+              type="button"
+              onClick={() => navigate('/forgot-password')}
+              className="text-blue-500"
+            >
               Forgot password?
             </button>
           </div>
           <div className="text-center">
-            <button onClick={() => navigate('/signup')} className="text-gray-500">
+            <button
+              type="button"
+              onClick={() => navigate('/signup')}
+              className="text-gray-500"
+            >
               Don't have an account? Sign Up
             </button>
           </div>
