@@ -3,27 +3,47 @@ from cryptography.hazmat.primitives import padding
 import os
 
 def generate_key():
-    return os.urandom(32)
+    return os.urandom(32) 
 
 def encrypt_file(file_data: bytes, key: bytes):
     iv = os.urandom(16)
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-    encryptor = cipher.encryptor()
+    aes_cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    encryptor = aes_cipher.encryptor()
 
-    padding = 16 - len(file_data) % 16
-    file_data += bytes([padding]) * padding
+    # Manual padding
+    pad_len = 16 - len(file_data) % 16
+    file_data += bytes([pad_len]) * pad_len
 
-    return iv + encryptor.update(file_data) + encryptor.finalize()
+    aes_encrypted = encryptor.update(file_data) + encryptor.finalize()
+
+    # Step 2: ChaCha20 encryption on AES output (iv + ciphertext)
+    nonce = os.urandom(16)
+    chacha_cipher = Cipher(algorithms.ChaCha20(key, nonce), mode=None)
+    chacha_encryptor = chacha_cipher.encryptor()
+
+    chacha_encrypted = chacha_encryptor.update(iv + aes_encrypted)
+
+    # Final output: nonce + chacha20_encrypted_data
+    return nonce + chacha_encrypted
 
 def decrypt_file(encrypted_data: bytes, key: bytes):
-    iv = encrypted_data[:16]  # Extract IV from the beginning
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-    decryptor = cipher.decryptor()
+    # Step 1: ChaCha20 decryption
+    nonce = encrypted_data[:16]
+    chacha_encrypted = encrypted_data[16:]
 
-    decrypted_data = decryptor.update(encrypted_data[16:]) + decryptor.finalize()
+    chacha_cipher = Cipher(algorithms.ChaCha20(key, nonce), mode=None)
+    chacha_decryptor = chacha_cipher.decryptor()
 
-    # Remove PKCS7 padding
-    unpadder = padding.PKCS7(128).unpadder()
-    unpadded_data = unpadder.update(decrypted_data) + unpadder.finalize()
+    aes_combined = chacha_decryptor.update(chacha_encrypted)
 
-    return unpadded_data  # Returns the cleaned plaintext
+    iv = aes_combined[:16]
+    aes_encrypted = aes_combined[16:]
+
+    # Step 2: AES-CBC decryption
+    aes_cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    decryptor = aes_cipher.decryptor()
+    decrypted_padded = decryptor.update(aes_encrypted) + decryptor.finalize()
+
+    # Remove padding
+    pad_len = decrypted_padded[-1]
+    return decrypted_padded[:-pad_len]

@@ -28,7 +28,13 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     access_token = create_access_token(data={"sub": db_user.email}, expires_delta=timedelta(minutes=30))
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    return {
+        "user_name" : db_user.username, 
+        "user_id" : db_user.id , 
+        "access_token": access_token, 
+        "token_type": "bearer"
+    }
 
 def get_current_user(authorization: str = Header(None)):
     """Middleware to extract and verify token from Authorization header."""
@@ -44,3 +50,9 @@ def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=403, detail="Invalid or expired token")
 
     return user_data
+
+@router.get("/downloads_count")
+def total_download(user_id: int, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.id == user_id)
+    
+    return { "downloads": db_user.first().total_downloads if db_user else -1 }

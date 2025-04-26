@@ -4,22 +4,31 @@ import io
 from sqlalchemy.orm import Session
 import encryption, aws_utils
 from database import get_db
-from models import FileMetadata, User
+from models import FileMetadata, User, SharedFileAccess
 import uuid
 
 router = APIRouter()
 
 @router.get("/")
-async def get_files(owner_id: int = 1, db: Session = Depends(get_db)):
+async def get_files(owner_id: int, db: Session = Depends(get_db)):
     files = db.query(FileMetadata).filter(FileMetadata.owner_id == owner_id).all()
-    
+    shared_files = (
+        db.query(FileMetadata)
+        .join(SharedFileAccess, SharedFileAccess.file_id == FileMetadata.id)
+        .filter(SharedFileAccess.user_id == owner_id, SharedFileAccess.can_download == True)
+        .all()
+    )
     file_list = []
     for file in files:
-        file_list.append({ "id" : file.id, "name": file.filename, "size" : file.filesize, "created": file.created_at})
+        file_list.append({ "id" : file.id, "name": file.filename, "size" : file.filesize, "created": file.created_at, "owner" : "you"})
+    
+    for file in shared_files:
+        file_list.append({ "id" : file.id, "name": file.filename, "size" : file.filesize, "created": file.created_at, "owner" : file.owner.username})
+    
     return file_list
 
 @router.post("/upload/")
-async def upload_file(file: UploadFile = File(...), owner_id: int = 1, db: Session = Depends(get_db)):
+async def upload_file(owner_id: int, file: UploadFile = File(...),  db: Session = Depends(get_db)):
     key = encryption.generate_key()
     file_data = await file.read()
     encrypted_data = encryption.encrypt_file(file_data, key)
@@ -34,14 +43,28 @@ async def upload_file(file: UploadFile = File(...), owner_id: int = 1, db: Sessi
     return {"file_id": file_id}
 
 @router.get("/download/{file_id}")
-async def download_file(file_id: str, owner_id: int = 1, db: Session = Depends(get_db)):
-    metadata = db.query(FileMetadata).filter_by(id=file_id, owner_id=owner_id).first()
-    if not metadata:
-        raise HTTPException(status_code=404, detail="File not found or unauthorized")
+async def download_file(owner_id: int, file_id: str, db: Session = Depends(get_db)):
+    metadata = db.query(FileMetadata).filter_by(id=file_id).first()
 
+    
+    if not metadata:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if metadata.owner_id != owner_id:
+        # Check shared access
+        shared = db.query(SharedFileAccess).filter_by(file_id=file_id, user_id=owner_id, can_download=True).first()
+        if not shared:
+            raise HTTPException(status_code=403, detail="You don’t have permission to download this file")
+    
+    
     encrypted_data = aws_utils.download_file_from_s3(file_id)
     decrypted_data = encryption.decrypt_file(encrypted_data, metadata.encrypted_key)
 
+    # Increment owner's total download count
+    file_owner = db.query(User).filter(User.id == owner_id).first()
+    file_owner.total_downloads += 1
+    db.commit()
+    
     # Convert decrypted data to BytesIO for streaming response
     file_stream = io.BytesIO(decrypted_data)
 
@@ -54,7 +77,7 @@ async def download_file(file_id: str, owner_id: int = 1, db: Session = Depends(g
     
 
 @router.delete("/delete/{file_id}")
-async def delete_file(file_id: str, owner_id: int = 1, db: Session = Depends(get_db)):
+async def delete_file(owner_id: int, file_id: str, db: Session = Depends(get_db)):
     # Check if file exists in the database and belongs to the owner
     metadata = db.query(FileMetadata).filter_by(id=file_id, owner_id=owner_id).first()
     if not metadata:
@@ -69,6 +92,13 @@ async def delete_file(file_id: str, owner_id: int = 1, db: Session = Depends(get
         return {"status": True, "message": "File successfully deleted"}
 
     raise HTTPException(status_code=500, detail="Failed to delete file from S3")
+
+@router.post("/share")
+def share_file_access(file_id: uuid.UUID, target_user_id: int, db: Session = Depends(get_db)):
+    shared = SharedFileAccess(file_id=file_id, user_id=target_user_id, can_download=True)
+    db.add(shared)
+    db.commit()
+    return {"message": "File shared successfully"}
 
 if __name__ == "__main__":
     pass
