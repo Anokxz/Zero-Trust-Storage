@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Feedback
 from schemas import FeedbackCreate, FeedbackOut
+from typing import List
 
 router = APIRouter()
 
@@ -14,6 +15,6 @@ def create_feedback(feedback: FeedbackCreate, db: Session = Depends(get_db)):
     db.refresh(db_feedback)
     return db_feedback
 
-@router.get("/", response_model=list[FeedbackOut])
+@router.get("/", response_model=List[FeedbackOut])
 def get_all_feedback(db: Session = Depends(get_db)):
     return db.query(Feedback).all()
